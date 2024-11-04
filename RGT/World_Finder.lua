@@ -139,10 +139,9 @@ function overlay(message)
     growtopia.notify("`4[`9L`wuciu`9S`4]`9 " .. message)
 end
 
-function saveTiles(filename)
-    file = io.open("/storage/emulated/0/Android/data/launcher.powerkuy.growlauncher/ScriptLua/LogGenerate.db", "w")
+function saveLogs(data)
+    file = io.open("/storage/emulated/0/Android/data/launcher.powerkuy.growlauncher/ScriptLua/LogGenerate.db", "a")
     if file then
-        data = '[+] | ' .. os.date("!%a %b %d, %H:%M", os.time() + 7 * 60 * 60) .. ' | Generate > ' .. world .. ' [+]'
         file:write(data)
         file:close()
         console("Logs saved to LogGenerate.db")
@@ -169,7 +168,11 @@ function generateWorld()
     local gRan = math.random(1, #chars)
     world = world .. string.sub(chars, gRan, gRan)
   end
-
+    
+    world = prefix .. world .. suffix
+    data = '[+] | ' .. os.date("!%a %b %d, %H:%M", os.time() + 7 * 60 * 60) .. ' | Generate > ' .. world .. ' [+]\n'
+    saveLogs(data)
+    
   console("Entering World : `2" .. world)
   sendPacket(3, "action|join_request\nname|" .. world .."\ninvitedWorld|0")
 
@@ -200,7 +203,7 @@ function onValue(t,n,v)
   end
   if t == 0 then
     
-      if n == "button_generate" and v then
+      if n == "button_generate" then
         generateWorld()
       end
 
