@@ -8,8 +8,6 @@ length = 5
 prefix = ""
 suffix = ""
 console_prefix = "`b[`9L`wuciu`9S`b]`9 "
-targetIDs = {100, 202, 242}
-setDefault = {}
 
 Lucid =
     [[
@@ -146,10 +144,6 @@ Lucid =
 }
 ]]
 addIntoModule(Lucid)
-
-for _, id in ipairs(targetIDs) do
-    setDefault[id] = 0
-end
 
 function console(message)
     log(console_prefix .. message)
