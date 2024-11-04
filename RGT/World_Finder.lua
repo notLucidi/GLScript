@@ -1,6 +1,6 @@
---// Growlauncher Script 
+--// Growlauncher Script
 --// Script By Lucius
---// WORLD FINDER 
+--// WORLD FINDER
 --// SUBSCRIBE SVE GTPS
 
 mode = "nn" --// NN : No Number | WN : With Number | NO : Number Only
@@ -8,8 +8,11 @@ length = 5
 prefix = ""
 suffix = ""
 console_prefix = "`b[`9L`wuciu`9S`b]`9 "
+targetIDs = {100, 202, 242}
+setDefault = {}
 
-Lucid = [[
+Lucid =
+    [[
     {
   "sub_name": "World Finder",
   "icon": "Public",
@@ -43,7 +46,9 @@ Lucid = [[
         {
           "type": "input_string",
           "text": "Set Prefix",
-          "default": "]] .. prefix .. [[",
+          "default": "]] ..
+    prefix ..
+        [[",
           "placeholder": "Example: STORAGE",
           "icon": "Edit",
           "alias": "config_prefix"
@@ -60,7 +65,9 @@ Lucid = [[
         {
           "type": "input_string",
           "text": "Set Suffix",
-          "default": "]] .. suffix .. [[",
+          "default": "]] ..
+            suffix ..
+                [[",
           "placeholder": "Example: FARM",
           "icon": "Edit",
           "alias": "config_suffix"
@@ -77,7 +84,9 @@ Lucid = [[
         {
           "type": "input_string",
           "text": "Set Prefix",
-          "default": "]] .. mode .. [[",
+          "default": "]] ..
+                    mode ..
+                        [[",
           "placeholder": "Example: NN",
           "icon": "Edit",
           "alias": "config_mode"
@@ -94,7 +103,9 @@ Lucid = [[
         {
           "text": "Length",
           "type": "slider",
-          "default": "]] .. length .. [[",
+          "default": "]] ..
+                            length ..
+                                [[",
           "min": 1,
           "max": 24,
           "alias": "config_length"
@@ -125,11 +136,20 @@ Lucid = [[
       "type": "button",
       "text": "Generate",
       "alias": "button_generate"
+    },
+    {
+      "type": "button",
+      "text": "Scan",
+      "alias": "button_scan"
     }
   ]
 }
 ]]
 addIntoModule(Lucid)
+
+for _, id in ipairs(targetIDs) do
+    setDefault[id] = 0
+end
 
 function console(message)
     log(console_prefix .. message)
@@ -144,74 +164,115 @@ function saveLogs(data)
     if file then
         file:write(data)
         file:close()
-        console("Logs saved to LogGenerate.db")
-        overlay("Logs saved to LogGenerate.db")
-    else
-        console("Failed to save logs.")
-        overlay("Failed to save logs.")
     end
 end
 
 function generateWorld()
-  local chars = ""
-  local world = ""
+    local chars = ""
+    local world = ""
 
-  if mode:find("wn") then
-    chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-  elseif mode:find("nn") then
-    chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-  elseif mode:find("no") then
-    chars = "1234567890"
-  end
+    if mode:find("wn") then
+        chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+    elseif mode:find("nn") then
+        chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    elseif mode:find("no") then
+        chars = "1234567890"
+    end
 
-  for i = 1, length do
-    local gRan = math.random(1, #chars)
-    world = world .. string.sub(chars, gRan, gRan)
-  end
-    
+    for i = 1, length do
+        local gRan = math.random(1, #chars)
+        world = world .. string.sub(chars, gRan, gRan)
+    end
+
     world = prefix .. world .. suffix
-    data = '[+] | ' .. os.date("!%a %b %d, %H:%M", os.time() + 7 * 60 * 60) .. ' | Generate > ' .. world .. ' [+]\n'
+    data = "[+] | " .. os.date("!%a %b %d, %H:%M", os.time() + 7 * 60 * 60) .. " | Generate > " .. world .. " [+]\n"
     saveLogs(data)
-    
-  console("Entering World : `2" .. world)
-  sendPacket(3, "action|join_request\nname|" .. world .."\ninvitedWorld|0")
 
+    console("Entering World : `2" .. world)
+    sendPacket(3, "action|join_request\nname|" .. world .. "\ninvitedWorld|0")
 end
 
-function onValue(t,n,v)
-  if t == 1 then
-
-      if n == "config_length" then
-        length = v
-      end
-
-  end
-  if t == 5 then
-
-      if n == "config_prefix" then
-        prefix = v
-      end
-
-      if n == "config_suffix" then
-        suffix = v
-      end
-
-      if n == "config_mode" then
-        mode = v
-      end
-
-  end
-  if t == 0 then
-    
-      if n == "button_generate" then
-        generateWorld()
-      end
-
-  end
+function formater(id, count)
+    local itemName = growtopia.getItemName(id) or "Unknown"
+    return string.format("add_button_with_icon|info_%d|%d|frame|%d|%d|\n", id, count, id, count)
 end
-  
+
+function scannedResult()
+    local items = ""
+    local totalItems = 0
+
+    for itemid, count in pairs(setDefault) do
+        if count > 0 then
+            items = items .. formater(itemid, count)
+            totalItems = totalItems + 1
+        end
+    end
+
+    local baseDialog =
+        [[
+add_label_with_icon|big|`bScan Result``|left|7188|
+add_smalltext|Script by `6@SveGTPS`4 x `6@Lucius``|
+add_spacer|small|
+add_smalltext|`oResults Found: `w]] ..totalItems ..[[ `oitems|left|
+add_spacer|small|
+end_dialog|req|Cancel|| 
+add_spacer|big|]] .. items .. [[
+add_quick_exit|
+]]
+    sendVariant({v1 = "OnDialogRequest", v2 = baseDialog})
+end
+
+function scanTiles()
+    local tiles = getTiles()
+
+    for _, tile in ipairs(tiles) do
+        local id = tile.fg
+        if setDefault[id] ~= nil then
+            setDefault[id] = setDefault[id] + 1
+        end
+    end
+
+    scannedResult()
+end
+
+function onValue(t, n, v)
+    if t == 1 then
+        if n == "config_length" then
+            length = v
+        end
+    end
+    if t == 5 then
+        if n == "config_prefix" then
+            prefix = v
+        end
+
+        if n == "config_suffix" then
+            suffix = v
+        end
+
+        if n == "config_mode" then
+            mode = v
+        end
+    end
+    if t == 0 then
+        if n == "button_generate" then
+            local time = os.time()
+            local cooldown = 5
+            local executed = 0
+
+            if time - lastExecuted >= cooldown then
+                generateWorld()
+                lastExecuted = time
+            else
+                local remainingTime = cooldown - (currentTime - lastExecuted)
+                console("Cooldown: " .. remainingTime .. " sec left.")
+            end
+        end
+
+        if n == "button_scan" then
+            scanTiles()
+        end
+    end
+end
+
 applyHook()
-
-  
-
-
