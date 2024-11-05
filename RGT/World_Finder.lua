@@ -3,13 +3,15 @@
 --// WORLD FINDER
 --// SUBSCRIBE SVE GTPS
 
-mode = "nn" --// NN : No Number | WN : With Number | NO : Number Only
-length = 5
-prefix = ""
-suffix = ""
-console_prefix = "`b[`9L`wuciu`9S`b]`9 "
-targetIDs = {3918, 202, 242, 206, 204}
-requiredItems = {}
+config = {
+    mode = "nn",
+    length = 5,
+    prefix = "",
+    suffix = "",
+    console_prefix = "`b[`9L`wuciu`9S`b]`9 ",
+    targetIDs = {3918, 202, 242, 206, 204},
+    requiredItems = {}
+}
 
 Lucid =
     [[
@@ -140,7 +142,7 @@ Lucid =
 addIntoModule(Lucid)
 
 function console(message)
-    log(console_prefix .. message)
+    log(config.console_prefix .. message)
 end
 
 function overlay(message)
@@ -155,25 +157,72 @@ function saveLogs(data)
     end
 end
 
+function saveConfig()
+    local file = io.open("/storage/emulated/0/Android/data/launcher.powerkuy.growlauncher/ScriptLua/configs.c", "w")
+    if file then
+        for key, value in pairs(config) do
+            if type(value) == "table" then
+                file:write(key .. "=" .. table.concat(value, ",") .. "\n")
+            else
+                file:write(key .. "=" .. tostring(value) .. "\n")
+            end
+        end
+        file:close()
+        console("Config saved!")
+    else
+        console("`4Failed to save config!")
+    end
+end
+
+function loadConfig()
+    local file = io.open("/storage/emulated/0/Android/data/launcher.powerkuy.growlauncher/ScriptLua/configs.c", "r")
+    if file then
+        for line in file:lines() do
+            local key, value = line:match("([^=]+)=([^=]*)")
+            if key and value then
+                if value:find(",") then
+                    local items = {}
+                    for item in value:gmatch("[^,]+") do
+                        table.insert(items, tonumber(item) or item)
+                    end
+                    config[key] = items
+                else
+                    if value == "true" then
+                        config[key] = true
+                    elseif value == "false" then
+                        config[key] = false
+                    else
+                        config[key] = tonumber(value) or value
+                    end
+                end
+            end
+        end
+        file:close()
+        console("Config Loaded!")
+    else
+        print("`4Failed to load config!")
+    end
+end
+
 function generateWorld()
     local chars = ""
     local world = ""
 
-    if mode:find("wn") then
+    if config.mode:find("wn") then
         chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-    elseif mode:find("nn") then
+    elseif config.mode:find("nn") then
         chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    elseif mode:find("no") then
+    elseif config.mode:find("no") then
         chars = "1234567890"
     end
 
-    for i = 1, length do
+    for i = 1, config.length do
         local gRan = math.random(1, #chars)
         world = world .. string.sub(chars, gRan, gRan)
     end
 
-    world = prefix .. world .. suffix
-    data = "[+] | " .. os.date("!%a %b %d, %H:%M", os.time() + 7 * 60 * 60) .. " | Generate > " .. world .. " [+]\n"
+    world = config.prefix .. world .. config.suffix
+    data = "[+] | " .. os.date("%a %b %d, %H:%M", os.time()) .. " | Generate > " .. world .. " [+]\n"
     saveLogs(data)
 
     console("Entering World : `2" .. world)
@@ -189,7 +238,7 @@ function displayRequiredItemsDialog()
     local items = ""
     local totalItems = 0
     
-    for itemid, count in pairs(requiredItems) do
+    for itemid, count in pairs(config.requiredItems) do
         if count > 0 then
             items = items .. generateItems(itemid, count)
             totalItems = totalItems + 1
@@ -212,11 +261,15 @@ end
 
 function scanTiles()
     local tiles = getTiles()
-
+    
+    for _, id in ipairs(config.targetIDs) do
+        config.requiredItems[id] = 0
+    end
+    
     for _, tile in ipairs(tiles) do
         local id = tile.fg
-        if requiredItems[id] ~= nil then
-            requiredItems[id] = requiredItems[id] + 1
+        if config.requiredItems[id] ~= nil then
+            config.requiredItems[id] = config.requiredItems[id] + 1
         end
     end
 
@@ -226,34 +279,37 @@ end
 function onValue(t, n, v)
     if t == 1 then
         if n == "config_length" then
-            length = v
+            config.length = v
         end
     end
     if t == 5 then
         if n == "config_prefix" then
-            prefix = v
+            config.prefix = v
         end
 
         if n == "config_suffix" then
-            suffix = v
+            config.suffix = v
         end
 
         if n == "config_mode" then
-            mode = v
+            if v == "nn" or v == "wn" or v == "no" then
+                config.mode = v
+            else
+                console("Invalid mode! Please use 'nn', 'wn', or 'no'.")
+            end
         end
     end
+    
     if t == 0 then
         if n == "button_generate" then
             generateWorld()
         end
 
         if n == "button_scan" then
-for _, id in ipairs(targetIDs) do
-    requiredItems[id] = 0
-end
             scanTiles() 
         end
     end
 end
 
+loadConfig()
 applyHook()
